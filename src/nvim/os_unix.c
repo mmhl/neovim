@@ -67,12 +67,6 @@
 # include <termios.h>
 #endif
 
-#ifdef HAVE_SELINUX
-# include <selinux/selinux.h>
-static int selinux_enabled = -1;
-#endif
-
-
 #ifdef INCLUDE_GENERATED_DECLARATIONS
 # include "os_unix.c.generated.h"
 #endif
@@ -341,52 +335,54 @@ int len               /* buffer size, only used when name gets longer */
 
 
 #if defined(HAVE_SELINUX)
+#  include <selinux/selinux.h>
 /*
  * Copy security info from "from_file" to "to_file".
  */
 void mch_copy_sec(char_u *from_file, char_u *to_file)
 {
-  if (from_file == NULL)
+  if (from_file == NULL || to_file == NULL)
     return;
 
-  if (selinux_enabled == -1)
-    selinux_enabled = is_selinux_enabled();
+  int selinux_enabled = is_selinux_enabled();
+  if(selinux_enabled <= 0)
+	return;
 
-  if (selinux_enabled > 0) {
-    security_context_t from_context = NULL;
-    security_context_t to_context = NULL;
+  security_context_t from_context = NULL;
+  security_context_t to_context = NULL;
 
-    if (getfilecon((char *)from_file, &from_context) < 0) {
-      /* If the filesystem doesn't support extended attributes,
-         the original had no special security context and the
-         target cannot have one either.  */
-      if (errno == EOPNOTSUPP)
-        return;
-
-      MSG_PUTS(_("\nCould not get security context for "));
-      msg_outtrans(from_file);
-      msg_putchar('\n');
+  if (getfilecon((char *)from_file, &from_context) < 0) {
+    /* If the filesystem doesn't support extended attributes,
+       the original had no special security context and the
+       target cannot have one either.  */
+    if (errno == EOPNOTSUPP)
       return;
-    }
-    if (getfilecon((char *)to_file, &to_context) < 0) {
-      MSG_PUTS(_("\nCould not get security context for "));
+
+    MSG_PUTS(_("\nCould not get security context for "));
+    msg_outtrans(from_file);
+    msg_putchar('\n');
+    return;
+  }
+  if (getfilecon((char *)to_file, &to_context) < 0) {
+    MSG_PUTS(_("\nCould not get security context for "));
+    msg_outtrans(to_file);
+    msg_putchar('\n');
+    freecon (from_context);
+    return;
+  }
+  if (strcmp(from_context, to_context) != 0) {
+    if (setfilecon((char *)to_file, from_context) < 0) {
+      MSG_PUTS(_("\nCould not set security context for "));
       msg_outtrans(to_file);
       msg_putchar('\n');
-      freecon (from_context);
-      return;
     }
-    if (strcmp(from_context, to_context) != 0) {
-      if (setfilecon((char *)to_file, from_context) < 0) {
-        MSG_PUTS(_("\nCould not set security context for "));
-        msg_outtrans(to_file);
-        msg_putchar('\n');
-      }
-    }
+  }
     freecon(to_context);
     freecon(from_context);
-  }
 }
-#endif /* HAVE_SELINUX */
+#else
+void mch_copy_sec(char_u *from_file, char_u *to_file) { }  // NOOP
+#endif
 
 /*
  * Return a pointer to the ACL of file "fname" in allocated memory.

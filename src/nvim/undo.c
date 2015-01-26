@@ -1114,10 +1114,7 @@ void u_write_undo(char_u *name, int forceit, buf_T *buf, char_u *hash)
       && os_fchown(fd, (uv_uid_t)-1, (uv_gid_t)file_info_old.stat.st_gid)) {
     os_setperm(file_name, (perm & 0707) | ((perm & 07) << 3));
   }
-# ifdef HAVE_SELINUX
-  if (buf->b_ffname != NULL)
     mch_copy_sec(buf->b_ffname, file_name);
-# endif
 #endif
 
   fp = fdopen(fd, "w");
@@ -2131,7 +2128,7 @@ static void u_undoredo(int undo)
  * Otherwise, report the number of changes (this may be incorrect
  * in some cases, but it's better than nothing).
  */
-static void 
+static void
 u_undo_end (
     int did_undo,                   /* just did an undo */
     int absolute                   /* used ":undo N" */
@@ -2204,7 +2201,7 @@ u_undo_end (
 /*
  * u_sync: stop adding to the current entry list
  */
-void 
+void
 u_sync (
     int force              /* Also sync when no_u_sync is set. */
 )
@@ -2477,7 +2474,7 @@ static void u_getbot(void)
 /*
  * Free one header "uhp" and its entry list and adjust the pointers.
  */
-static void 
+static void
 u_freeheader (
     buf_T *buf,
     u_header_T *uhp,
@@ -2513,7 +2510,7 @@ u_freeheader (
 /*
  * Free an alternate branch and any following alternate branches.
  */
-static void 
+static void
 u_freebranch (
     buf_T *buf,
     u_header_T *uhp,
@@ -2547,7 +2544,7 @@ u_freebranch (
  * Free all the undo entries for one header and the header itself.
  * This means that "uhp" is invalid when returning.
  */
-static void 
+static void
 u_freeentries (
     buf_T *buf,
     u_header_T *uhp,
